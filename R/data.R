@@ -24,9 +24,11 @@ meta <- data.frame(
 modelMeta <- data.frame(model.matrix(~0+brix + cultivar + skin,meta)) %>% 
   # add sample and skinRed columns
   mutate(skinRed = ifelse(skinWhite == 0, 1, 0),
-         sample = rownames(meta)) %>% 
+         sample = rownames(meta),
+         cultivarCD = ifelse(cultivarCF == 0 & cultivarCS == 0 & cultivarME == 0 & cultivarPN == 0 &
+                               cultivarSB == 0 & cultivarSM == 0, 1 , 0)) %>% 
   # reorder columns
-  select(sample, brix20:skinRed)
+  select(sample, brix20:cultivarPN, cultivarCD, cultivarSB:skinRed)
 write.csv(modelMeta, "./data/modelMetadata.csv", row.names = TRUE)
 
 
