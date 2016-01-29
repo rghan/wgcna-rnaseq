@@ -5,7 +5,7 @@ library(WGCNA)
 # To allow multi-threading within WGCNA with all available cores, use 
 allowWGCNAThreads(nThreads = 22) 
 # or let WGCNA pick total number
-enableWGCNAThreads()
+# enableWGCNAThreads() # not advised as it assigns 23 cores causing problems
 # to disable threading if necessary.
 disableWGCNAThreads() 
 # Alternatively, set the following environment variable on your system:
@@ -261,4 +261,4 @@ diag(plotTOM) = NA;
 restGenes <- (moduleColors != "grey")
 # Call the plot function
 sizeGrWindow(12,9)
-TOMplot(plotTOM, geneTree, restGenes, main = "Network heatmap plot, all genes")
+TOMplot(plotTOM, geneTree, restGenes, main = "Network heatmap plot, all connected genes")
