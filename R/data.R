@@ -1,7 +1,7 @@
 ## load data
 ## set multicore for DESeq2
 register(MulticoreParam(22))
-###############################################################################
+#===============================================================================##
 ## count data (filtered version removing rows with zero counts in all libraries)
 count <- read.csv("./data/all.ww.bard.2012_gene_counts.csv",
                   header = TRUE,
@@ -21,22 +21,24 @@ meta <- data.frame(
 ## Make design matrix
 #brix <- relevel(meta$brix, ref="20")
 #cultivar <- relevel(meta$cultivar, ref="CS")
-modelMeta <- data.frame(model.matrix(~0+brix + cultivar + skin,meta)) %>% 
+modelMeta <- data.frame(model.matrix(~0 + brix + cultivar + skin, meta)) %>% 
   # add sample and skinRed columns
   mutate(skinRed = ifelse(skinWhite == 0, 1, 0),
-         sample = rownames(meta),
-         cultivarCD = ifelse(cultivarCF == 0 & cultivarCS == 0 & cultivarME == 0 & cultivarPN == 0 &
-                               cultivarSB == 0 & cultivarSM == 0, 1 , 0)) %>% 
+         cultivarCD = ifelse(cultivarCF == 0 & cultivarCS == 0 & cultivarME == 0
+                             & cultivarPN == 0 & cultivarSB == 0 
+                             & cultivarSM == 0, 1 , 0)) %>% 
   # reorder columns
-  select(sample, brix20:cultivarPN, cultivarCD, cultivarSB:skinRed)
-write.csv(modelMeta, "./data/modelMetadata.csv", row.names = TRUE)
+  select(brix20:cultivarPN, cultivarCD, cultivarSB:skinRed)
+# assign rownames from meta
+rownames(modelMeta) <- rownames(meta)
+write.csv(modelMeta, "./data/modelMeta.csv", row.names = TRUE)
 
 
 ## build an DESeqDataSet from count and meta information
 dds <- DESeqDataSetFromMatrix(
   countData = count,
   colData = meta,
-  design = ~brix * cultivar)
+  design = ~ brix * cultivar)
 
 ## Assign gene names to dds, not sure what to use
 #rownames(dds) <- rownames(count)
@@ -47,7 +49,7 @@ all(rownames(dds) == rownames(count))
 nrow(dds)
 ## remove all genes with counts < 10 in more than 90% of samples (84*0.9=75.6)
 ## suggested by WGCNA on RNAseq FAQ
-dds90 <- dds[ rowSums(counts(dds) >= 10) >= 75.6, ]
+dds90 <- dds[ rowSums(counts(dds) >= 20) >= 75.6, ]
 nrow(dds90)
 ## remove all genes with counts < 5in more than 80% of samples (84*0.8=67.2)
 ## suggested by another WGCNA pipeline
@@ -59,8 +61,11 @@ dds2 <- DESeq(dds90, betaPrior = FALSE, parallel = TRUE)
 ## Perform a variance-stabilizing transformation
 vsd <- getVarianceStabilizedData(dds2)
 ## Many functions expect the matrix to be transposed
-vsd2 <- t(vsd) 
+datExpr <- t(vsd) 
 ## check rows/cols
-nrow(vsd2)
-ncol(vsd2)
+nrow(datExpr)
+ncol(datExpr)
+
+## save a copy 
+write.csv(datExpr, "./data/datExpr.brix.csv", row.names = TRUE)
 ## proceed to wgcna_analysis.R
