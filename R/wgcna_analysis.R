@@ -16,7 +16,8 @@ ALLOW_WGCNA_THREADS=14
 #===============================================================================
 datExpr <- read.csv("./data/datExpr.brix.csv", header = TRUE,
                     stringsAsFactors = FALSE, row.names = 1)
-
+# assign vsd rownames to geneNames vector, used for TOM below
+geneNames <- rownames(vsd)
 # form a data frame analogous to expression data that will hold the clinical traits.
 datTraits <- read.csv("./data/modelMeta.csv", header = TRUE, 
                       stringsAsFactors = FALSE, row.names = 1)
@@ -95,6 +96,7 @@ adjacency=adjacency(datExpr, power=softPower, type="signed hybrid")
 # Turn adjacency into topological overlap, i.e. translate the adjacency into 
 # topological overlap matrix and calculate the corresponding dissimilarity:
 TOM <- TOMsimilarity(adjacency, TOMType = "signed")
+colnames(TOM) = rownames(TOM) = geneNames # from PKLab Harvard 
 dissTOM <- 1 - TOM
 
 ## generate a clustered gene tree
@@ -254,11 +256,22 @@ verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
 dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = 11);
 # Transform dissTOM with a power to make moderately strong connections more visible in the heatmap
 plotTOM = dissTOM^12; # color is faint at power=7
+
+
+# discard the unassigned genes, and focus on the rest
+# from: http://pklab.med.harvard.edu/scw2014/WGCNA.html
+restGenes= (dynamicColors != "grey")
+dissTOM=1-TOMsimilarityFromExpr(datExpr[,restGenes], power = softPower)
+
+# look at the network w/out "grey" modules
+colnames(dissTOM) = rownames(dissTOM) = geneNames[restGenes]
+hier1=flashClust(as.dist(dissTOM), method = "average" )
+plotDendroAndColors(hier1, dynamicColors[restGenes], "Dynamic Tree Cut", dendroLabels = FALSE, hang = 0.03, addGuide = TRUE, guideHang = 0.05, main = "Gene dendrogram and module colors")
+
 # Set diagonal to NA for a nicer plot
 diag(plotTOM) = NA;
-# remove the grey module
-#length(moduleColors=="grey")
-restGenes <- (moduleColors != "grey")
+
 # Call the plot function
 sizeGrWindow(12,9)
-TOMplot(plotTOM, geneTree, restGenes, main = "Network heatmap plot, all connected genes")
+TOMplot(dissTOM, hier1, as.character(dynamicColors[restGenes]))
+#TOMplot(plotTOM, hier1, moduleColors, main = "Network heatmap plot, all connected genes")
