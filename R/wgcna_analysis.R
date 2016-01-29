@@ -14,8 +14,8 @@ ALLOW_WGCNA_THREADS=14
 #===============================================================================
 # Load variance stabilized DESeq2 data (datExpr) into WGCNA and reformat
 #===============================================================================
-#set your current working directory (where all your files are)
-setwd(".")
+datExpr <- read.csv("./data/datExpr.brix.csv", header = TRUE,
+                    stringsAsFactors = FALSE, row.names = 1)
 
 # form a data frame analogous to expression data that will hold the clinical traits.
 datTraits <- read.csv("./data/modelMeta.csv", header = TRUE, 
@@ -24,14 +24,17 @@ datTraits <- read.csv("./data/modelMeta.csv", header = TRUE,
 # Check if expression and trait data row names match
 table(rownames(datTraits)==rownames(datExpr)) # should return TRUE if datasets align correctly
 
-datExpr <- read.csv("./data/datExpr.brix.csv", header = TRUE,
-                    stringsAsFactors = FALSE, row.names = 1)
+#===============================================================================
+# Begin WGCNA
+#===============================================================================
+#set your current working directory (where all your files are)
+setwd(".")
 
 # calculate the cluster tree using flashClust or hclust
 wgcnaTree <- flashClust(dist(datExpr), method = "average")
 traitColors <- numbers2colors(datTraits, signed = TRUE)
 # Plot the sample tree
-pdf(file = "Plots/sampleClustering.pdf", width = 12, height = 9);
+pdf(file = "Plots/sampleClustering.20counts.pdf", width = 12, height = 9);
 par(cex = 0.6);
 par(mar = c(0,4,2,0))
 plotDendroAndColors(wgcnaTree,
@@ -48,6 +51,8 @@ save(datExpr, datTraits, file="SamplesAndTraits.RData")
 ## choosing a set of soft-thresholding powers
 powers= c(c(1:10), seq(from = 12, to = 20, by = 1))
 ## call network topology analysis function
+## may need to set this if an error is called
+## allowWGCNAThreads(nThreads = 22)
 sft = pickSoftThreshold(datExpr, powerVector = powers, verbose = 5, 
                         blockSize = 20000, networkType="signed hybrid",
                         corFnc = "bicor", 
@@ -73,52 +78,16 @@ text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1, col="red")
 ## from this plot, we would choose a power of 10 becuase it's the lowest power for 
 ## which the scale free topology index reaches 0.90
 
-#===============================================================================
-## Block-wise network construction and module detection, attempting to look at
-## network connectivity of all genes at once.
-bwnet = blockwiseModules(datExpr, maxBlockSize = 4000, # half of the # of genes
-                         power = 15, TOMType = "signed", minModuleSize = 30,
-                         corType = "bicor",
-                         reassignThreshold = 0, mergeCutHeight = 0.25,
-                         numericLabels = TRUE,
-                         saveTOMs = TRUE,
-                         saveTOMFileBase = "berrybrixTOM-blockwiseSigned",
-                         verbose = 3)
 
-# Load the results of single-block analysis
-#load(file = "FemaleLiver-02-networkConstruction-auto.RData");
-# Relabel blockwise modules
-bwLabels = matchLabels(bwnet$colors, moduleLabels);
-# Convert labels to colors for plotting
-bwModuleColors = labels2colors(bwLabels)
-
-## To see how many modules were identified and what the module sizes, one can use
-## table(bwLabels):
-table(bwLabels)
-
-# open a graphics window
-sizeGrWindow(6,6)
-# Plot the dendrogram and the module colors underneath for block 1
-plotDendroAndColors(bwnet$dendrograms[[1]], bwModuleColors[bwnet$blockGenes[[1]]],
-                    "Module colors", main = "Gene dendrogram and module colors in block 1", 
-                    dendroLabels = FALSE, hang = 0.03,
-                    addGuide = TRUE, guideHang = 0.05)
-
-# Comparing the single block and block-wise network analysis
-sizeGrWindow(12,9)
-plotDendroAndColors(geneTree,
-                    cbind(moduleColors, bwModuleColors,dynamicColors, mergedColors),
-                    c("Single block", "2 blocks", "dynamic colors", "merged colors"),
-                    main = "Single block gene dendrogram and module colors",
-                    dendroLabels = FALSE, hang = 0.03,
-                    addGuide = TRUE, guideHang = 0.05)
 #===============================================================================
 # Construct a gene co-expression matrix and generate modules
 # https://labs.genetics.ucla.edu/horvath/CoexpressionNetwork/Rpackages/WGCNA/Tutorials/FemaleLiver-02-networkConstr-man.pdf
-enableWGCNAThreads()
+#enableWGCNAThreads() # This seems to cause problems w/ various functions
+allowWGCNAThreads(nThreads = 22) 
+
 #===============================================================================
 ## Co-expression similarity and adjacency using assigned softpower
-softPower=13
+softPower=11
 adjacency=adjacency(datExpr, power=softPower, type="signed hybrid")
 
 #===============================================================================
@@ -179,6 +148,7 @@ merge <- mergeCloseModules(datExpr, dynamicColors, cutHeight = MEDissThres,
 # The merged module colors
 mergedColors <- merge$colors
 length(unique(mergedColors))
+table(mergedColors)
 # Eigengenes of the new merged modules:
 mergedMEs <- merge$newMEs
 
@@ -186,7 +156,7 @@ mergedMEs <- merge$newMEs
 # To see the merging upon module colors, plot the gene dendrogram again, with
 # the original and merged colors underneath
 sizeGrWindow(12, 9)
-pdf(file = "Plots/geneDendro-3.pdf", wi = 9, he = 6)
+pdf(file = "Plots/geneDendro.20counts.pdf", wi = 9, he = 6)
 plotDendroAndColors(geneTree, cbind(dynamicColors, mergedColors),
                     c("Dynamic Tree Cut", "Merged dynamic"),
                     dendroLabels = FALSE, hang = 0.03,
@@ -219,7 +189,7 @@ moduleTraitPvalue <- corPvalueStudent(moduleTraitCor, nSamples)
 ## Color code each association by correlation value
 sizeGrWindow(12, 9)
 # Will display correlations and their p-values
-pdf(file = "Plots/module-trait.signed.relationships.pdf", width = 12, height = 9)
+pdf(file = "Plots/mod-trait.relationships20.counts.pdf", width = 12, height = 9)
 textMatrix <- paste(signif(moduleTraitCor, 2), "\n(",
                     signif(moduleTraitPvalue, 1), ")", sep = "")
 dim(textMatrix) <- dim(moduleTraitCor)
@@ -262,7 +232,7 @@ GSPvalue = as.data.frame(corPvalueStudent(as.matrix(geneTraitSignificance), nSam
 names(geneTraitSignificance) = paste("GS.", names(brix20), sep="");
 names(GSPvalue) = paste("p.GS.", names(brix20), sep="");
 
-module = "lightcyan2"
+module = "turquoise"
 column = match(module, modNames);
 moduleGenes = moduleColors==module;
 
@@ -281,7 +251,7 @@ verboseScatterplot(abs(geneModuleMembership[moduleGenes, column]),
 ## Visualizing the gene network
 # Calculate topological overlap anew: this could be done more efficiently by saving the TOM
 # calculated during module detection, but let us do it again here.
-dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = 13);
+dissTOM = 1-TOMsimilarityFromExpr(datExpr, power = 11);
 # Transform dissTOM with a power to make moderately strong connections more visible in the heatmap
 plotTOM = dissTOM^12; # color is faint at power=7
 # Set diagonal to NA for a nicer plot
