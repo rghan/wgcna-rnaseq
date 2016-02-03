@@ -266,12 +266,28 @@ dissTOM=1-TOMsimilarityFromExpr(datExpr[,restGenes], power = softPower)
 # look at the network w/out "grey" modules
 colnames(dissTOM) = rownames(dissTOM) = geneNames[restGenes]
 hier1=flashClust(as.dist(dissTOM), method = "average" )
-plotDendroAndColors(hier1, moduleColors[restGenes], "Dynamic-merged Tree Cut", dendroLabels = FALSE, hang = 0.03, addGuide = TRUE, guideHang = 0.05, main = "Gene dendrogram and module colors")
+plotDendroAndColors(hier1, colors = data.frame(dynamicColors[restGenes],moduleColors[restGenes]),
+                    c("Dynamic-merged Tree Cut","Merged-module Tree Cut"),
+                    dendroLabels = FALSE, hang = 0.03, addGuide = TRUE,
+                    guideHang = 0.05, main = "Gene dendrogram and module colors")
 
 # Set diagonal to NA for a nicer plot
 diag(plotTOM) = NA;
+diag(dissTOM) = NA
 
 # Call the plot function
 sizeGrWindow(12,9)
-TOMplot(dissTOM, hier1, as.character(moduleColors[restGenes]))
+TOMplot(plotTOM^, hier1, as.character(moduleColors[restGenes]))
+plotTOM = dissTOM^2; # color is faint at power=7
+diag(plotTOM) = NA;
 #TOMplot(plotTOM, hier1, moduleColors, main = "Network heatmap plot, all connected genes")
+
+#===============================================================================
+# based on the chpt 12
+#===============================================================================
+A = adjacency(datExpr, power = softPower, type = "signed")
+dissTOM = TOMdist(A)
+diag(dissTOM) = NA
+TOMplot(dissim = dissTOM^7, geneTree, 
+        colors = as.character(moduleColors), 
+        main = "Network heatmap plot, all genes")
