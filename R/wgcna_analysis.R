@@ -283,11 +283,37 @@ diag(plotTOM) = NA;
 #TOMplot(plotTOM, hier1, moduleColors, main = "Network heatmap plot, all connected genes")
 
 #===============================================================================
-# based on the chpt 12
+# based on the chpt 12 - all genes
 #===============================================================================
 A = adjacency(datExpr, power = softPower, type = "signed")
+plotDendroAndColors(geneTree, colors = data.frame(dynamicColors,moduleColors),
+                    c("Dynamic-merged Tree Cut","Merged-module Tree Cut"),
+                    dendroLabels = FALSE, hang = 0.03, addGuide = TRUE,
+                    guideHang = 0.05, main = "Gene dendrogram and module colors")
 dissTOM = TOMdist(A)
 diag(dissTOM) = NA
+png("./Plots/TOMplot.brix.png", width = 600, height = 600)
 TOMplot(dissim = dissTOM^7, geneTree, 
-        colors = as.character(moduleColors), 
+        moduleColors, 
         main = "Network heatmap plot, all genes")
+dev.off()
+#===============================================================================
+# based on the chpt 12 - reomved grey genes
+#===============================================================================
+A2 = adjacency(datExpr[restGenes], power = softPower, type = "signed")
+dissTOM2 = TOMdist(A2)
+## generate a clustered gene tree
+geneTree2 <- flashClust(as.dist(dissTOM2), method="average")
+
+plotDendroAndColors(geneTree2, colors = data.frame(dynamicColors[restGenes],moduleColors[restGenes]),
+                    c("Dynamic-merged Tree Cut","Merged-module Tree Cut"),
+                    dendroLabels = FALSE, hang = 0.03, addGuide = TRUE,
+                    guideHang = 0.05,
+                    main = "Gene dendrogram and module colors\nremoved unassigned gene modules (MEgrey)")
+
+diag(dissTOM2) = NA
+png("./Plots/TOMplot.brix.png", width = 600, height = 600)
+TOMplot(dissim = dissTOM2^7, geneTree, 
+        as.character(moduleColors[restGenes]), 
+        main = "Network heatmap plot, removed Grey module genes")
+dev.off()
